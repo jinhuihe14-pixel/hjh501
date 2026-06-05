@@ -221,7 +221,7 @@ export default function SalaryRecordsPage() {
               {records.length === 0 && (
                 <tr>
                   <td colSpan={10} className="text-center text-gray-500 py-8">
-                    暂无薪资记录，请先点击"计算薪资"生成本月工资单
+                    暂无薪资记录，请先点击&ldquo;计算薪资&rdquo;生成本月工资单
                   </td>
                 </tr>
               )}
