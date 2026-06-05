@@ -1,0 +1,282 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  FRONT_DESK
+  TECHNICIAN
+  SALES
+  CUSTOMER
+}
+
+enum OrderStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum OrderType {
+  SERVICE
+  PRODUCT
+  COMBINED
+}
+
+enum SalaryStatus {
+  DRAFT
+  CONFIRMED
+  LOCKED
+}
+
+model User {
+  id           String    @id @default(cuid())
+  name         String
+  phone        String    @unique
+  email        String?   @unique
+  password     String
+  role         Role
+  avatar       String?
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  
+  technicianOrders Order[] @relation("TechnicianOrders")
+  salesOrders      Order[] @relation("SalesOrders")
+  frontDeskOrders  Order[] @relation("FrontDeskOrders")
+  salaryRecords    SalaryRecord[]
+  attendances      Attendance[]
+  
+  @@map("users")
+}
+
+model Customer {
+  id          String   @id @default(cuid())
+  name        String
+  phone       String   @unique
+  wechatId    String?
+  address     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  vehicles    Vehicle[]
+  orders      Order[]
+  
+  @@map("customers")
+}
+
+model Vehicle {
+  id            String   @id @default(cuid())
+  plateNumber   String   @unique
+  brand         String
+  model         String
+  color         String?
+  vin           String?
+  currentMileage Int     @default(0)
+  customerId    String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  customer      Customer @relation(fields: [customerId], references: [id])
+  maintenances  MaintenanceRecord[]
+  orders        Order[]
+  
+  @@map("vehicles")
+}
+
+model ServiceCategory {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  services    Service[]
+  
+  @@map("service_categories")
+}
+
+model Service {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  price       Decimal  @db.Decimal(10, 2)
+  workHours   Int      @default(1)
+  hourPrice   Decimal  @db.Decimal(10, 2)
+  categoryId  String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  category    ServiceCategory @relation(fields: [categoryId], references: [id])
+  orderItems  OrderItem[]
+  
+  @@map("services")
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  price       Decimal  @db.Decimal(10, 2)
+  cost        Decimal  @db.Decimal(10, 2) @default(0)
+  stock       Int      @default(0)
+  image       String?
+  commissionRate Decimal @db.Decimal(5, 2) @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  orderItems  OrderItem[]
+  
+  @@map("products")
+}
+
+model Order {
+  id              String   @id @default(cuid())
+  orderNo         String   @unique
+  orderType       OrderType
+  status          OrderStatus @default(PENDING)
+  totalAmount     Decimal  @db.Decimal(10, 2)
+  discountAmount  Decimal  @db.Decimal(10, 2) @default(0)
+  actualAmount    Decimal  @db.Decimal(10, 2)
+  customerId      String?
+  vehicleId       String?
+  frontDeskId     String?
+  technicianId    String?
+  salesId         String?
+  remark          String?
+  paymentMethod   String?
+  paidAt          DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  customer        Customer? @relation(fields: [customerId], references: [id])
+  vehicle         Vehicle?  @relation(fields: [vehicleId], references: [id])
+  frontDesk       User?     @relation("FrontDeskOrders", fields: [frontDeskId], references: [id])
+  technician      User?     @relation("TechnicianOrders", fields: [technicianId], references: [id])
+  sales           User?     @relation("SalesOrders", fields: [salesId], references: [id])
+  items           OrderItem[]
+  
+  @@map("orders")
+}
+
+model OrderItem {
+  id          String   @id @default(cuid())
+  orderId     String
+  itemType    String
+  serviceId   String?
+  productId   String?
+  name        String
+  price       Decimal  @db.Decimal(10, 2)
+  quantity    Int      @default(1)
+  subtotal    Decimal  @db.Decimal(10, 2)
+  workHours   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  order       Order    @relation(fields: [orderId], references: [id])
+  service     Service? @relation(fields: [serviceId], references: [id])
+  product     Product? @relation(fields: [productId], references: [id])
+  
+  @@map("order_items")
+}
+
+model SalaryRule {
+  id                String   @id @default(cuid())
+  effectiveMonth    String
+  role              Role
+  baseSalary        Decimal  @db.Decimal(10, 2) @default(0)
+  frontDeskCommissionRate Decimal @db.Decimal(5, 2) @default(0)
+  salesCommissionRate Decimal @db.Decimal(5, 2) @default(0)
+  fullBonus         Decimal  @db.Decimal(10, 2) @default(0)
+  lateDeduction     Decimal  @db.Decimal(10, 2) @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@unique([effectiveMonth, role])
+  @@map("salary_rules")
+}
+
+model SalaryRecord {
+  id          String   @id @default(cuid())
+  userId      String
+  month       String
+  baseSalary  Decimal  @db.Decimal(10, 2)
+  workHours   Int      @default(0)
+  hourWage    Decimal  @db.Decimal(10, 2) @default(0)
+  salesAmount Decimal  @db.Decimal(10, 2) @default(0)
+  salesCommission Decimal @db.Decimal(10, 2) @default(0)
+  orderAmount Decimal  @db.Decimal(10, 2) @default(0)
+  orderCommission Decimal @db.Decimal(10, 2) @default(0)
+  fullBonus   Decimal  @db.Decimal(10, 2) @default(0)
+  lateCount   Int      @default(0)
+  lateDeduction Decimal @db.Decimal(10, 2) @default(0)
+  otherBonus  Decimal  @db.Decimal(10, 2) @default(0)
+  otherDeduction Decimal @db.Decimal(10, 2) @default(0)
+  totalSalary Decimal  @db.Decimal(10, 2)
+  status      SalaryStatus @default(DRAFT)
+  remark      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  user        User     @relation(fields: [userId], references: [id])
+  
+  @@unique([userId, month])
+  @@map("salary_records")
+}
+
+model Attendance {
+  id          String   @id @default(cuid())
+  userId      String
+  date        DateTime
+  checkIn     DateTime?
+  checkOut    DateTime?
+  isLate      Boolean  @default(false)
+  isAbsent    Boolean  @default(false)
+  remark      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  user        User     @relation(fields: [userId], references: [id])
+  
+  @@unique([userId, date])
+  @@map("attendances")
+}
+
+model MaintenanceRecord {
+  id              String   @id @default(cuid())
+  vehicleId       String
+  serviceType     String
+  mileage         Int
+  lastDate        DateTime
+  nextMileage     Int
+  nextDate        DateTime?
+  isReminded      Boolean  @default(false)
+  remark          String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  vehicle         Vehicle  @relation(fields: [vehicleId], references: [id])
+  
+  @@map("maintenance_records")
+}
+
+model PerformanceLog {
+  id          String   @id @default(cuid())
+  userId      String
+  orderId     String
+  type        String
+  amount      Decimal  @db.Decimal(10, 2)
+  commission  Decimal  @db.Decimal(10, 2)
+  workHours   Int      @default(0)
+  month       String
+  createdAt   DateTime @default(now())
+  
+  @@map("performance_logs")
+}
