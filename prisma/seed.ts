@@ -70,14 +70,17 @@ async function main() {
   ]
 
   for (const service of services) {
-    await prisma.service.upsert({
-      where: { name: service.name },
-      update: {},
-      create: {
-        ...service,
-        categoryId: category.id
-      }
+    const existing = await prisma.service.findFirst({
+      where: { name: service.name }
     })
+    if (!existing) {
+      await prisma.service.create({
+        data: {
+          ...service,
+          categoryId: category.id
+        }
+      })
+    }
   }
 
   const products = [
@@ -89,11 +92,14 @@ async function main() {
   ]
 
   for (const product of products) {
-    await prisma.product.upsert({
-      where: { name: product.name },
-      update: {},
-      create: product
+    const existing = await prisma.product.findFirst({
+      where: { name: product.name }
     })
+    if (!existing) {
+      await prisma.product.create({
+        data: product
+      })
+    }
   }
 
   const currentMonth = new Date().toISOString().slice(0, 7)
