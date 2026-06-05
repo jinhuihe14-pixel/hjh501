@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import FrontDeskLayout from '@/components/FrontDeskLayout'
-import { formatMoney, formatDateTime, OrderStatusLabels } from '@/lib/utils'
+import { formatMoney, formatDateTime, OrderStatusLabels, PaymentMethodLabels } from '@/lib/utils'
 
 export default function FrontDeskOrdersPage() {
   const [orders, setOrders] = useState<any[]>([])
@@ -34,6 +34,7 @@ export default function FrontDeskOrdersPage() {
                 <th>订单号</th>
                 <th>客户</th>
                 <th>金额</th>
+                <th>支付方式</th>
                 <th>技师</th>
                 <th>导购</th>
                 <th>状态</th>
@@ -46,6 +47,16 @@ export default function FrontDeskOrdersPage() {
                   <td className="font-medium text-primary">{order.orderNo}</td>
                   <td>{order.customer?.name || '散客'}</td>
                   <td className="font-medium">{formatMoney(order.actualAmount)}</td>
+                  <td>
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                      order.paymentMethod === 'CREDIT' ? 'bg-orange-100 text-orange-800' :
+                      order.paymentMethod === 'WECHAT' ? 'bg-green-100 text-green-800' :
+                      order.paymentMethod === 'ALIPAY' ? 'bg-blue-100 text-blue-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {PaymentMethodLabels[order.paymentMethod] || '-'}
+                    </span>
+                  </td>
                   <td>{order.technician?.name || '-'}</td>
                   <td>{order.sales?.name || '-'}</td>
                   <td>
@@ -62,7 +73,7 @@ export default function FrontDeskOrdersPage() {
               ))}
               {orders.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="text-center text-gray-500 py-8">
+                  <td colSpan={8} className="text-center text-gray-500 py-8">
                     暂无订单数据
                   </td>
                 </tr>

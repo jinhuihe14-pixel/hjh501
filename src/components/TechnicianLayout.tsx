@@ -14,6 +14,7 @@ interface User {
 
 const menuItems = [
   { href: '/technician/tasks', label: '我的工单', icon: '📋' },
+  { href: '/technician/attendance', label: '考勤打卡', icon: '🕐' },
   { href: '/technician/performance', label: '业绩查询', icon: '📊' },
   { href: '/technician/salary', label: '薪资查看', icon: '💰' },
 ]

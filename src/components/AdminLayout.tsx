@@ -16,6 +16,7 @@ const menuItems = [
   { href: '/admin/dashboard', label: '数据概览', icon: '📊' },
   { href: '/admin/orders', label: '订单管理', icon: '📋' },
   { href: '/admin/employees', label: '员工管理', icon: '👥' },
+  { href: '/admin/attendance', label: '考勤管理', icon: '🕐' },
   { href: '/admin/services', label: '服务项目', icon: '🔧' },
   { href: '/admin/products', label: '商品管理', icon: '📦' },
   { href: '/admin/salary-rules', label: '薪资规则', icon: '⚙️' },

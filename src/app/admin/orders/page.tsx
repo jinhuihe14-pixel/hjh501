@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import AdminLayout from '@/components/AdminLayout'
-import { formatMoney, formatDateTime, OrderStatusLabels } from '@/lib/utils'
+import { formatMoney, formatDateTime, OrderStatusLabels, PaymentMethodLabels } from '@/lib/utils'
 
 interface Order {
   id: string
@@ -21,6 +22,7 @@ interface Order {
 }
 
 export default function OrdersPage() {
+  const router = useRouter()
   const [orders, setOrders] = useState<Order[]>([])
   const [statusFilter, setStatusFilter] = useState<string>('')
 
@@ -69,6 +71,7 @@ export default function OrdersPage() {
                 <th>车辆</th>
                 <th>类型</th>
                 <th>金额</th>
+                <th>支付方式</th>
                 <th>技师</th>
                 <th>导购</th>
                 <th>开单员</th>
@@ -79,7 +82,12 @@ export default function OrdersPage() {
             <tbody>
               {orders.map((order) => (
                 <tr key={order.id} className="hover:bg-gray-50 cursor-pointer">
-                  <td className="font-medium text-primary">{order.orderNo}</td>
+                  <td 
+                    className="font-medium text-primary hover:underline"
+                    onClick={() => router.push(`/admin/orders/${order.id}`)}
+                  >
+                    {order.orderNo}
+                  </td>
                   <td>{order.customer?.name || '散客'}</td>
                   <td>{order.vehicle?.plateNumber || '-'}</td>
                   <td>
@@ -87,6 +95,16 @@ export default function OrdersPage() {
                      order.orderType === 'PRODUCT' ? '商品' : '混合'}
                   </td>
                   <td className="font-medium">{formatMoney(order.actualAmount)}</td>
+                  <td>
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                      (order as any).paymentMethod === 'CREDIT' ? 'bg-orange-100 text-orange-800' :
+                      (order as any).paymentMethod === 'WECHAT' ? 'bg-green-100 text-green-800' :
+                      (order as any).paymentMethod === 'ALIPAY' ? 'bg-blue-100 text-blue-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {PaymentMethodLabels[(order as any).paymentMethod] || '-'}
+                    </span>
+                  </td>
                   <td>{order.technician?.name || '-'}</td>
                   <td>{order.sales?.name || '-'}</td>
                   <td>{order.frontDesk?.name || '-'}</td>
@@ -104,7 +122,7 @@ export default function OrdersPage() {
               ))}
               {orders.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="text-center text-gray-500 py-8">
+                  <td colSpan={11} className="text-center text-gray-500 py-8">
                     暂无订单数据
                   </td>
                 </tr>

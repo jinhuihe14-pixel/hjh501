@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { requireAuth } from '@/lib/auth'
 import { generateOrderNo, getCurrentMonth } from '@/lib/utils'
-import { OrderType, OrderStatus, Role } from '@prisma/client'
+import { OrderType, OrderStatus, Role, StockLogType } from '@prisma/client'
 
 export async function GET(request: Request) {
   try {
@@ -52,6 +52,10 @@ export async function POST(request: Request) {
     const data = await request.json()
     const month = getCurrentMonth()
     
+    if (!data.paymentMethod) {
+      return NextResponse.json({ error: '请选择支付方式' }, { status: 400 })
+    }
+    
     const order = await prisma.$transaction(async (tx) => {
       const order = await tx.order.create({
         data: {
@@ -66,6 +70,8 @@ export async function POST(request: Request) {
           technicianId: data.technicianId || null,
           salesId: data.salesId || null,
           remark: data.remark,
+          paymentMethod: data.paymentMethod,
+          paidAt: data.paymentMethod !== 'CREDIT' ? new Date() : null,
           items: {
             create: data.items.map((item: any) => ({
               itemType: item.type,
@@ -131,6 +137,47 @@ export async function POST(request: Request) {
           })
         }
       }
+      
+      const productItems = order.items.filter(item => item.itemType === 'product' && item.productId)
+      for (const item of productItems) {
+        if (item.productId) {
+          const product = await tx.product.findUnique({
+            where: { id: item.productId }
+          })
+          
+          if (product) {
+            const beforeStock = product.stock
+            const afterStock = beforeStock - item.quantity
+            
+            await tx.product.update({
+              where: { id: item.productId },
+              data: { stock: afterStock }
+            })
+            
+            await tx.stockLog.create({
+              data: {
+                productId: item.productId,
+                type: StockLogType.OUT,
+                quantity: item.quantity,
+                beforeStock,
+                afterStock,
+                remark: `订单 ${order.orderNo}`,
+                operatorId: user.id
+              }
+            })
+          }
+        }
+      }
+      
+      await tx.orderStatusLog.create({
+        data: {
+          orderId: order.id,
+          fromStatus: null,
+          toStatus: OrderStatus.PENDING,
+          operatorId: user.id,
+          remark: '订单创建'
+        }
+      })
       
       return order
     })

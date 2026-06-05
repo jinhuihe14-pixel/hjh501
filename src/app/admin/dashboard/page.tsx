@@ -10,6 +10,8 @@ interface Stats {
   todayOrders: number
   monthRevenue: number
   monthOrders: number
+  totalCustomers: number
+  totalVehicles: number
 }
 
 export default function DashboardPage() {
@@ -18,34 +20,58 @@ export default function DashboardPage() {
     todayRevenue: 0,
     todayOrders: 0,
     monthRevenue: 0,
-    monthOrders: 0
+    monthOrders: 0,
+    totalCustomers: 0,
+    totalVehicles: 0
   })
   const [recentOrders, setRecentOrders] = useState<any[]>([])
 
   useEffect(() => {
     const loadData = async () => {
-      const res = await fetch('/api/orders')
-      const data = await res.json()
+      const [ordersRes, customersRes, vehiclesRes] = await Promise.all([
+        fetch('/api/orders'),
+        fetch('/api/customers'),
+        fetch('/api/vehicles')
+      ])
       
-      if (data.orders) {
+      const ordersData = await ordersRes.json()
+      const customersData = await customersRes.json()
+      const vehiclesData = await vehiclesRes.json()
+      
+      if (ordersData.orders) {
         const today = new Date().toDateString()
         const thisMonth = new Date().getMonth()
         
-        const todayOrders = data.orders.filter((o: any) => 
+        const todayOrders = ordersData.orders.filter((o: any) => 
           new Date(o.createdAt).toDateString() === today
         )
-        const monthOrders = data.orders.filter((o: any) => 
+        const monthOrders = ordersData.orders.filter((o: any) => 
           new Date(o.createdAt).getMonth() === thisMonth
         )
         
-        setStats({
+        setStats(prev => ({
+          ...prev,
           todayRevenue: todayOrders.reduce((sum: number, o: any) => sum + parseFloat(o.actualAmount), 0),
           todayOrders: todayOrders.length,
           monthRevenue: monthOrders.reduce((sum: number, o: any) => sum + parseFloat(o.actualAmount), 0),
           monthOrders: monthOrders.length
-        })
+        }))
         
-        setRecentOrders(data.orders.slice(0, 10))
+        setRecentOrders(ordersData.orders.slice(0, 10))
+      }
+      
+      if (customersData.customers) {
+        setStats(prev => ({
+          ...prev,
+          totalCustomers: customersData.customers.length
+        }))
+      }
+      
+      if (vehiclesData.vehicles) {
+        setStats(prev => ({
+          ...prev,
+          totalVehicles: vehiclesData.vehicles.length
+        }))
       }
     }
     
@@ -60,7 +86,7 @@ export default function DashboardPage() {
           <p className="text-gray-500">欢迎回来，查看门店运营数据</p>
         </div>
 
-        <div className="grid grid-cols-4 gap-6">
+        <div className="grid grid-cols-6 gap-6">
           <div className="card p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -113,6 +139,34 @@ export default function DashboardPage() {
               </div>
               <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
                 <span className="text-2xl">🛒</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="card p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">客户总数</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">
+                  {stats.totalCustomers} 人
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center">
+                <span className="text-2xl">👥</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="card p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">车辆总数</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">
+                  {stats.totalVehicles} 辆
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-cyan-100 rounded-full flex items-center justify-center">
+                <span className="text-2xl">🚗</span>
               </div>
             </div>
           </div>

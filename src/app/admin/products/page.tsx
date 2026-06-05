@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import AdminLayout from '@/components/AdminLayout'
-import { formatMoney } from '@/lib/utils'
+import { formatMoney, formatDateTime } from '@/lib/utils'
 
 interface Product {
   id: string
@@ -14,9 +14,28 @@ interface Product {
   commissionRate: number
 }
 
+interface StockLog {
+  id: string
+  type: 'IN' | 'OUT' | 'ADJUST'
+  quantity: number
+  beforeStock: number
+  afterStock: number
+  remark: string | null
+  operator: { name: string } | null
+  createdAt: string
+}
+
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [showModal, setShowModal] = useState(false)
+  const [showStockModal, setShowStockModal] = useState(false)
+  const [showStockLogsModal, setShowStockLogsModal] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [stockLogs, setStockLogs] = useState<StockLog[]>([])
+  const [stockFormData, setStockFormData] = useState({
+    quantity: '',
+    remark: ''
+  })
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -50,6 +69,38 @@ export default function ProductsPage() {
     if (res.ok) {
       setShowModal(false)
       loadProducts()
+    }
+  }
+
+  const openStockModal = (product: Product) => {
+    setSelectedProduct(product)
+    setStockFormData({ quantity: '', remark: '' })
+    setShowStockModal(true)
+  }
+
+  const handleStockSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedProduct) return
+    
+    const res = await fetch(`/api/products/${selectedProduct.id}/stock`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(stockFormData)
+    })
+
+    if (res.ok) {
+      setShowStockModal(false)
+      loadProducts()
+    }
+  }
+
+  const openStockLogsModal = async (product: Product) => {
+    setSelectedProduct(product)
+    const res = await fetch(`/api/products/${product.id}/stock-logs`)
+    const data = await res.json()
+    if (data.stockLogs) {
+      setStockLogs(data.stockLogs)
+      setShowStockLogsModal(true)
     }
   }
 
@@ -97,9 +148,20 @@ export default function ProductsPage() {
                   </td>
                   <td>{product.commissionRate}%</td>
                   <td>
-                    <button className="text-primary hover:underline text-sm">
-                      编辑
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => openStockModal(product)}
+                        className="text-green-600 hover:underline text-sm"
+                      >
+                        进货
+                      </button>
+                      <button
+                        onClick={() => openStockLogsModal(product)}
+                        className="text-blue-600 hover:underline text-sm"
+                      >
+                        库存记录
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -192,6 +254,113 @@ export default function ProductsPage() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {showStockModal && selectedProduct && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl p-6 w-full max-w-md">
+              <h2 className="text-lg font-semibold mb-2">商品进货</h2>
+              <p className="text-sm text-gray-500 mb-4">
+                当前商品：{selectedProduct.name}（当前库存：{selectedProduct.stock} 件）
+              </p>
+              <form onSubmit={handleStockSubmit} className="space-y-4">
+                <div>
+                  <label className="label">进货数量</label>
+                  <input
+                    type="number"
+                    className="input"
+                    min="1"
+                    value={stockFormData.quantity}
+                    onChange={(e) => setStockFormData({ ...stockFormData, quantity: e.target.value })}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="label">备注</label>
+                  <textarea
+                    className="input"
+                    rows={2}
+                    value={stockFormData.remark}
+                    onChange={(e) => setStockFormData({ ...stockFormData, remark: e.target.value })}
+                    placeholder="可选，如进货渠道等"
+                  />
+                </div>
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    className="btn btn-secondary flex-1"
+                    onClick={() => setShowStockModal(false)}
+                  >
+                    取消
+                  </button>
+                  <button type="submit" className="btn btn-primary flex-1">
+                    确认进货
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {showStockLogsModal && selectedProduct && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[80vh] flex flex-col">
+              <h2 className="text-lg font-semibold mb-2">库存变动记录</h2>
+              <p className="text-sm text-gray-500 mb-4">
+                商品：{selectedProduct.name}
+              </p>
+              <div className="flex-1 overflow-y-auto">
+                {stockLogs.length > 0 ? (
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>时间</th>
+                        <th>类型</th>
+                        <th>变动数量</th>
+                        <th>变动前</th>
+                        <th>变动后</th>
+                        <th>操作人</th>
+                        <th>备注</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stockLogs.map((log) => (
+                        <tr key={log.id}>
+                          <td className="text-sm">{formatDateTime(log.createdAt)}</td>
+                          <td>
+                            <span className={`badge ${
+                              log.type === 'IN' ? 'badge-success' :
+                              log.type === 'OUT' ? 'badge-error' : 'badge-warning'
+                            }`}>
+                              {log.type === 'IN' ? '进货' : log.type === 'OUT' ? '出库' : '调整'}
+                            </span>
+                          </td>
+                          <td className={log.type === 'IN' ? 'text-green-600' : 'text-red-600'}>
+                            {log.type === 'IN' ? '+' : '-'}{log.quantity}
+                          </td>
+                          <td>{log.beforeStock}</td>
+                          <td>{log.afterStock}</td>
+                          <td className="text-sm text-gray-600">{log.operator?.name || '-'}</td>
+                          <td className="text-sm text-gray-500">{log.remark || '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <p className="text-center text-gray-500 py-8">暂无库存变动记录</p>
+                )}
+              </div>
+              <div className="pt-4 border-t mt-4">
+                <button
+                  type="button"
+                  className="btn btn-secondary w-full"
+                  onClick={() => setShowStockLogsModal(false)}
+                >
+                  关闭
+                </button>
+              </div>
             </div>
           </div>
         )}

@@ -34,6 +34,12 @@ enum SalaryStatus {
   LOCKED
 }
 
+enum StockLogType {
+  IN
+  OUT
+  ADJUST
+}
+
 model User {
   id           String    @id @default(cuid())
   name         String
@@ -51,6 +57,9 @@ model User {
   frontDeskOrders  Order[] @relation("FrontDeskOrders")
   salaryRecords    SalaryRecord[]
   attendances      Attendance[]
+  statusLogs       OrderStatusLog[]
+  performanceLogs  PerformanceLog[]
+  operatedStockLogs StockLog[]
   
   @@map("users")
 }
@@ -133,6 +142,7 @@ model Product {
   updatedAt   DateTime @updatedAt
   
   orderItems  OrderItem[]
+  stockLogs   StockLog[]
   
   @@map("products")
 }
@@ -162,6 +172,8 @@ model Order {
   technician      User?     @relation("TechnicianOrders", fields: [technicianId], references: [id])
   sales           User?     @relation("SalesOrders", fields: [salesId], references: [id])
   items           OrderItem[]
+  statusLogs      OrderStatusLog[]
+  performanceLogs PerformanceLog[]
   
   @@map("orders")
 }
@@ -267,6 +279,21 @@ model MaintenanceRecord {
   @@map("maintenance_records")
 }
 
+model OrderStatusLog {
+  id          String   @id @default(cuid())
+  orderId     String
+  fromStatus  OrderStatus?
+  toStatus    OrderStatus
+  operatorId  String
+  remark      String?
+  createdAt   DateTime @default(now())
+  
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  operator    User     @relation(fields: [operatorId], references: [id])
+  
+  @@map("order_status_logs")
+}
+
 model PerformanceLog {
   id          String   @id @default(cuid())
   userId      String
@@ -278,5 +305,25 @@ model PerformanceLog {
   month       String
   createdAt   DateTime @default(now())
   
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id])
+  
   @@map("performance_logs")
+}
+
+model StockLog {
+  id          String       @id @default(cuid())
+  productId   String
+  type        StockLogType
+  quantity    Int
+  beforeStock Int
+  afterStock  Int
+  remark      String?
+  operatorId  String?
+  createdAt   DateTime     @default(now())
+  
+  product     Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  operator    User?        @relation(fields: [operatorId], references: [id])
+  
+  @@map("stock_logs")
 }

@@ -74,3 +74,11 @@ export const SalaryStatusLabels: Record<string, string> = {
   CONFIRMED: '已确认',
   LOCKED: '已锁定'
 }
+
+export const PaymentMethodLabels: Record<string, string> = {
+  WECHAT: '微信支付',
+  ALIPAY: '支付宝',
+  CASH: '现金',
+  BANK_CARD: '银行卡',
+  CREDIT: '挂账'
+}

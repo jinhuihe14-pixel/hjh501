@@ -18,6 +18,9 @@ interface Order {
 export default function TechnicianTasksPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [filter, setFilter] = useState<string>('')
+  const [showRemarkModal, setShowRemarkModal] = useState(false)
+  const [selectedOrderId, setSelectedOrderId] = useState('')
+  const [completionRemark, setCompletionRemark] = useState('')
 
   useEffect(() => {
     loadOrders()
@@ -32,13 +35,28 @@ export default function TechnicianTasksPage() {
     }
   }
 
-  const updateStatus = async (id: string, status: string) => {
+  const updateStatus = async (id: string, status: string, remark?: string) => {
     await fetch(`/api/orders/${id}/status`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status })
+      body: JSON.stringify({ status, remark })
     })
     loadOrders()
+  }
+
+  const handleComplete = (orderId: string) => {
+    setSelectedOrderId(orderId)
+    setCompletionRemark('')
+    setShowRemarkModal(true)
+  }
+
+  const confirmComplete = () => {
+    if (!completionRemark.trim()) {
+      alert('请填写施工备注')
+      return
+    }
+    updateStatus(selectedOrderId, 'COMPLETED', completionRemark)
+    setShowRemarkModal(false)
   }
 
   const filteredOrders = filter 
@@ -137,7 +155,7 @@ export default function TechnicianTasksPage() {
                 )}
                 {order.status === 'IN_PROGRESS' && (
                   <button
-                    onClick={() => updateStatus(order.id, 'COMPLETED')}
+                    onClick={() => handleComplete(order.id)}
                     className="w-full mt-3 py-2 bg-green-500 text-white rounded-lg font-medium"
                   >
                     完成施工
@@ -148,6 +166,36 @@ export default function TechnicianTasksPage() {
           </div>
         )}
       </div>
+
+      {showRemarkModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-bold mb-4">填写施工备注</h3>
+            <textarea
+              className="input w-full"
+              rows={4}
+              value={completionRemark}
+              onChange={(e) => setCompletionRemark(e.target.value)}
+              placeholder="请填写施工内容、检查情况等备注信息..."
+              autoFocus
+            />
+            <div className="flex gap-4 mt-6">
+              <button
+                onClick={() => setShowRemarkModal(false)}
+                className="btn btn-secondary flex-1"
+              >
+                取消
+              </button>
+              <button
+                onClick={confirmComplete}
+                className="btn btn-primary flex-1"
+              >
+                确认完成
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </TechnicianLayout>
   )
 }
